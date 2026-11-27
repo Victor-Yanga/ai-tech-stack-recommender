@@ -1,0 +1,125 @@
+"""
+DecodeLabs AI Internship - Project 3: AI Recommendation Logic (Tech Stack Recommender)
+Author: Victor Usoh
+
+Content-based filtering with the 4-step pipeline from the training kit:
+    1. INGESTION : take at least three skills from the user
+    2. SCORING   : TF-IDF vectors + cosine similarity against every job role
+    3. SORTING   : rank roles from best to worst match
+    4. FILTERING : show only the Top-N list to avoid choice overload
+
+Run:  python tech_stack_recommender.py
+Or:   python tech_stack_recommender.py "Python, Cloud, Automation"
+"""
+
+import sys
+from pathlib import Path
+
+import pandas as pd
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+
+DATA_FILE = "raw_skills.csv"
+TOP_N = 3
+MIN_SKILLS = 3
+
+# Friendly names the user might type -> the exact skill names in the dataset
+ALIASES = {
+    "cloud computing": "cloud", "aws": "cloud", "azure": "cloud",
+    "ml": "machine learning", "ai": "machine learning",
+    "js": "javascript", "tests": "testing", "ci cd": "ci/cd",
+    "visualization": "data visualization", "data viz": "data visualization",
+    "prompting": "prompt engineering", "scripts": "scripting",
+}
+
+
+def tokenize(text):
+    """Skills are separated by commas, so multi-word skills stay in one piece."""
+    return [s.strip().lower() for s in text.split(",") if s.strip()]
+
+
+def clean_user_skills(raw_text, known_skills):
+    """Normalise what the user typed and split it into known and unknown skills."""
+    skills = [ALIASES.get(s, s) for s in tokenize(raw_text)]
+    known = [s for s in dict.fromkeys(skills) if s in known_skills]  # keeps order, removes repeats
+    unknown = [s for s in dict.fromkeys(skills) if s not in known_skills]
+    return known, unknown
+
+
+def build_model(df):
+    """Turn every job role's skills into a TF-IDF vector (the shared vocabulary space)."""
+    vectorizer = TfidfVectorizer(tokenizer=tokenize, lowercase=False, token_pattern=None)
+    role_vectors = vectorizer.fit_transform(df["skills"])
+    return vectorizer, role_vectors
+
+
+def recommend(user_skills, df, vectorizer, role_vectors, top_n=TOP_N):
+    """Steps 2-4: score every role, sort, and keep the top N."""
+    user_vector = vectorizer.transform([", ".join(user_skills)])
+    scores = cosine_similarity(user_vector, role_vectors).ravel()   # SCORING
+    ranked = df.assign(score=scores).sort_values("score", ascending=False)  # SORTING
+    ranked = ranked[ranked["score"] > 0]          # drop roles that share nothing with the user
+    return ranked.head(top_n)                      # FILTERING (Top-N)
+
+
+def ask_user(known_skills):
+    """Step 1: ingestion. Keep asking until we have at least three usable skills."""
+    print("Available skills:", ", ".join(sorted(known_skills)))
+    while True:
+        raw = input("\nEnter at least 3 skills or interests, separated by commas: ")
+        skills, unknown = clean_user_skills(raw, known_skills)
+        if unknown:
+            print("Not in my dataset (ignored):", ", ".join(unknown))
+        if len(skills) >= MIN_SKILLS:
+            return skills
+        print(f"I need at least {MIN_SKILLS} skills I recognise. Please try again.")
+
+
+def show_results(user_skills, top):
+    print("\nYour skills:", ", ".join(user_skills))
+    print(f"\nTop {len(top)} recommended roles:")
+    for rank, (_, row) in enumerate(top.iterrows(), start=1):
+        print(f"\n{rank}. {row['role']}  ({row['score'] * 100:.0f}% match)")
+        print(f"   Core skills : {row['skills']}")
+        print(f"   Tools to learn: {row['tools_platforms']}")
+
+
+def load_data():
+    """Find raw_skills.csv next to this script (or in the current folder, e.g. Colab)."""
+    try:
+        path = Path(__file__).resolve().parent / DATA_FILE
+    except NameError:  # running pasted into a notebook cell: no __file__
+        path = Path(DATA_FILE)
+    if not path.exists():
+        path = Path(DATA_FILE)
+    if not path.exists():
+        sys.exit(f"Could not find {DATA_FILE}. Upload it to the same folder as this script and run again.")
+    return pd.read_csv(path)
+
+
+def main():
+    df = load_data()
+    vectorizer, role_vectors = build_model(df)
+    known_skills = set(vectorizer.get_feature_names_out())
+
+    args = [a for a in sys.argv[1:] if not a.startswith("-")]  # ignore notebook flags like "-f kernel.json"
+    if len(args) == 1 and args[0].endswith(".json"):
+        args = []  # Colab/Jupyter passes a kernel file here; treat as no skills given
+    if args:  # quick demo mode: pass the skills on the command line
+        user_skills, unknown = clean_user_skills(" ".join(args), known_skills)
+        if unknown:
+            print("Not in my dataset (ignored):", ", ".join(unknown))
+        if len(user_skills) < MIN_SKILLS:
+            sys.exit(f"Please give at least {MIN_SKILLS} recognised skills.")
+    else:
+        user_skills = ask_user(known_skills)
+
+    top = recommend(user_skills, df, vectorizer, role_vectors)
+    if top.empty:  # cold start: nothing matched at all
+        print("\nNo role matched. Cold-start fallback: popular starter roles are Data Analyst and Frontend Developer.")
+        return
+    show_results(user_skills, top)
+
+
+if __name__ == "__main__":
+    main()
