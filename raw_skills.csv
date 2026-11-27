@@ -1,0 +1,13 @@
+role,skills,tools_platforms
+Data Scientist,"python,sql,statistics,machine learning,data visualization,pandas","Jupyter, scikit-learn, Tableau, Power BI"
+Machine Learning Engineer,"python,machine learning,deep learning,docker,cloud,apis,git","TensorFlow, PyTorch, MLflow, AWS SageMaker"
+Data Analyst,"excel,sql,data visualization,statistics,python","Excel, Power BI, Tableau, Google Looker Studio"
+Backend Developer,"python,java,apis,databases,sql,git,docker","Django, FastAPI, Spring Boot, PostgreSQL"
+DevOps Engineer,"linux,docker,kubernetes,cloud,automation,ci/cd,scripting,git","GitHub Actions, Jenkins, Terraform, AWS"
+Cloud Engineer,"cloud,linux,networking,automation,security,scripting","AWS, Azure, Google Cloud, Terraform"
+Frontend Developer,"javascript,react,html,css,git,apis","React, Vue, Figma, VS Code"
+Full-Stack Developer,"javascript,react,python,apis,databases,sql,git","Node.js, React, PostgreSQL, Docker"
+Cybersecurity Analyst,"security,networking,linux,scripting,python,monitoring","Wireshark, Splunk, Nessus, Kali Linux"
+AI Automation Specialist,"automation,prompt engineering,apis,workflows,python,no-code","Zapier, Make, n8n, OpenAI and Claude APIs"
+Data Engineer,"python,sql,etl,cloud,spark,databases,automation","Apache Airflow, Spark, BigQuery, dbt"
+QA Automation Engineer,"testing,automation,python,scripting,ci/cd,git","Selenium, Pytest, Postman, GitHub Actions"
